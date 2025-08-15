@@ -1,12 +1,94 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<meta http-equiv="X-UA-Compatible" content="IE=edge">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Portfolio</title>
-</head>
-<body>
-  <p>Hello, World!</p>
-</body>
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>아보카도 이벤트</title>
+    <style>
+      .hidden-print { display:none; }
+      @media print {
+        .hidden-print { display:block; margin:20px auto; text-align:center; }
+        .hidden-print img { max-width:200px; }
+      }
+      #passcode-overlay{
+        position:fixed; inset:0; background:#000; color:#f00;
+        font-size:48px; font-weight:800; display:none;
+        align-items:center; justify-content:center; z-index:9999;
+      }
+    </style>
+  </head>
+  <body>
+    <p>아보카도 이벤트</p>
+    <p>뭔가 숨겨져있는 것 같아..</p>
+
+    <div class="hidden-print">
+      <img src="https://i.ibb.co/8Lf3W7wL/Kakao-Talk-Photo-2025-08-14-11-11-40.jpg" alt="">
+    </div>
+
+    <div id="passcode-overlay"></div>
+
+    <script>
+      // === (선택) 간단 DevTools 휴리스틱: 콘솔 열리면 DOM 파괴
+      (function(){
+        const nuke = (r='nuke') => {
+          document.documentElement.innerHTML =
+            `<head><meta charset="utf-8"></head><body style="background:#000;color:#f00;font:800 28px/1.6 system-ui;padding:24px">
+              <h1>소스 그렇게 보는 거 아닌데 ㅋ</h1><p style="opacity:.7">${r}</p></body>`;
+        };
+        // bait.toString 훅
+        let tripped = false;
+        const bait = /devtools/;
+        bait.toString = function(){ if(!tripped){ tripped=true; nuke('console-open'); } return 'devtools'; };
+        setInterval(()=>{ try{ console.log(bait); }catch(e){} }, 800);
+
+        // 사이즈 휴리스틱(데스크톱 보완)
+        const threshold = 160;
+        setInterval(()=> {
+          const dw = Math.abs((window.outerWidth||0)-window.innerWidth);
+          const dh = Math.abs((window.outerHeight||0)-window.innerHeight);
+          if (dw>threshold || dh>threshold) nuke('panel-size');
+        }, 600);
+
+        // 우클릭/핫키
+        addEventListener('contextmenu', e=>e.preventDefault());
+        addEventListener('keydown', e=>{
+          if (e.key==='F12' ||
+              (e.ctrlKey && e.shiftKey && e.key.toLowerCase()==='i') ||
+              (e.ctrlKey && e.key.toLowerCase()==='j') ||
+              (e.ctrlKey && e.key.toLowerCase()==='u')) e.preventDefault();
+        });
+      })();
+
+      // === 패스코드: Cloudflare Worker에서만 가져옴
+      const API = 'https://YOUR_SUBDOMAIN.workers.dev/passcode'; // 아래 2단계에서 발급된 주소
+
+      async function fetchPasscode(){
+        try {
+          const res = await fetch(API, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-store',
+          });
+          if (!res.ok) return;
+          const data = await res.json(); // { ok: boolean, code?: string }
+          if (data && data.ok && data.code) {
+            const overlay = document.getElementById('passcode-overlay');
+            overlay.textContent = `PASSCODE_5 : {${data.code}}`;
+            overlay.style.display = 'flex';
+          } else {
+            // 창 닫기
+            const overlay = document.getElementById('passcode-overlay');
+            if (overlay.style.display!=='none') overlay.style.display='none';
+          }
+        } catch (e) {
+          // 조용히 실패
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', ()=>{
+        fetchPasscode();           // 즉시 1회
+        setInterval(fetchPasscode, 5000); // 5초마다 갱신 (1분 윈도우 커버)
+      });
+    </script>
+  </body>
 </html>
